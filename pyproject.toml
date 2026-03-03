@@ -9,6 +9,7 @@ dependencies = [
     "langchain-openai>=1.1.7",
     "langchain-qwq>=0.3.4",
     "python-dotenv>=1.2.1",
+    "pyyaml>=6.0.3",
 ]
 
 [build-system]
@@ -18,3 +19,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["v_agent"]
+
+[tool.scripts]
+v_agent = "v_agent.cli.cli:main"
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
