@@ -5,6 +5,7 @@ description = "V-Agent: An agentic development project"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "colorama>=0.4.6",
     "langchain>=1.2.4",
     "langchain-openai>=1.1.7",
     "langchain-qwq>=0.3.4",

@@ -25,10 +25,20 @@ class SessionPrompt:
 
             # TODO: 还要检测 abort 信号
 
-            stream_input = LLM.StreamInput(system=SystemPrompt.message)
+            # TODO: 从数据库中加载历史消息
+            msgs = []
+
+            # TODO: 将 msgs 转换为 langchain 的消息格式，作为 LLM 的输入
+
+            # TODO: 处理 tasks
+
+            stream_input = LLM.StreamInput(
+                messages=msgs,
+                sessionID=sessionID
+            )
 
             processor = SessionProcess(sessionID)
-            result = processor.process(stream_input) # 要把历史消息发送过去
+            result = processor.process(stream_input)
 
             if result == 'stop':
                 break
@@ -41,11 +51,16 @@ class SessionPrompt:
         # TODO: 把 input.parts 转换成 Message.Part 的格式
         # 两种特殊的：file 和 agent
 
+        # 存入数据库， loop 从数据库里面读取全部历史消息，不是显示发送这条
+
     def prompt(self, input: PromptInput):
         '''
         从数据库中获取session
         根据输入生成message
         '''
+
+        # 生成用户消息
+        user_message = self.createUserMessage(input)
 
         # 启动
         self.loop(input.sessionID)
