@@ -1,6 +1,7 @@
 from loguru import logger
 import time
 from ..storage.db import global_db
+from ..utils.id import Identifier
 
 class Session:
     """会话管理，包含上下文管理、消息格式转换等功能"""
@@ -15,9 +16,9 @@ class Session:
     def createNext(self, input):
         """创建一个新的会话具体实现 主要需要考虑数据库"""
         result = Session.Info()
-        result.id = "123" # 这里需要生成一个唯一的ID
+        result.id = Identifier.generateID('session_')
         result.directory = input.directory
-        result.title = input.title if input.title else "New Session"
+        result.title = input.title if input.title else "New Session" + time.strftime(" %Y-%m-%d %H:%M:%S", time.localtime())
         result.time = {
             'created': time.time(),
             'updated': time.time()

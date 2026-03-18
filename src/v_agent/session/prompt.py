@@ -4,6 +4,7 @@ from .system import SystemPrompt
 from .llm import LLM
 from .message import Message, toModelMessages
 from ..storage.db import global_db
+from ..utils.id import Identifier
 
 class SessionPrompt:
 
@@ -47,7 +48,7 @@ class SessionPrompt:
 
     def createUserMessage(self, input: PromptInput) -> Message:
         """根据输入创建用户消息"""
-        id = input.messageID # if messageID is None, generate a new one
+        id = Identifier.generateID('msg_')
         info = Message.Info(id=id, model=input.model)
 
         # TODO: 把 input.parts 转换成 Message.Part 的格式
