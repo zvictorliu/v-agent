@@ -3,13 +3,6 @@ from langchain_qwq import ChatQwen
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage
 
-class StreamInput:
-    """流式输入格式"""
-    def __init__(self, messages : list[BaseMessage],
-                 tools, agent, system, sessionID):
-        self.messages = messages
-        self.sessionID = sessionID # 这些都是后话了
-
 class LLM:
     """大模型接入"""
     def __init__(self, options: ProviderOptions):
@@ -28,6 +21,14 @@ class LLM:
             )
         else:
             raise ValueError(f"Unsupported provider: {options.provider}")
+        
+    class StreamInput:
+        """流式输入格式"""
+        def __init__(self, messages : list[BaseMessage],
+                    tools, agent, system : list[BaseMessage], sessionID):
+            self.messages = messages # 转换为 langchain 的消息格式
+            self.system = system # 系统提示词
+            self.sessionID = sessionID # 这些都是后话了
         
     def invoke(self, input):
         '''需要把自己定义的消息格式转换成大模型需要的格式'''

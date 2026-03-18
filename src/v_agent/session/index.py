@@ -1,0 +1,40 @@
+from loguru import logger
+import time
+
+class Session:
+    """会话管理，包含上下文管理、消息格式转换等功能"""
+    def __init__(self):
+        pass
+
+    class Info:
+        """会话信息，包含会话ID、上下文等"""
+        def __init__(self):
+            pass
+
+    def createNext(self, input):
+        """创建一个新的会话具体实现 主要需要考虑数据库"""
+        result = Session.Info()
+        result.id = "123" # 这里需要生成一个唯一的ID
+        result.directory = input.directory
+        result.title = input.title if input.title else "New Session"
+        result.time = {
+            'created': time.time(),
+            'updated': time.time()
+        }
+
+        logger.info('Created new session with ID: {id}', id=result.id)
+
+        # TODO:保存到数据库
+
+        return result
+
+    def create(self, input):
+        """创建一个新的会话"""
+        return self.createNext(
+            {
+                'parentID': input.parentID,
+                'directory': input.directory,
+                'title': input.title
+            }
+        )
+

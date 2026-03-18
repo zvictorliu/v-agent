@@ -53,14 +53,14 @@ def create_chat_model():
     return ChatQwen(
         model="qwen-max",
         api_key=os.getenv("DASHSCOPE_API_KEY") or os.getenv("OPENAI_API_KEY"),
-        base_url=os.getenv("DASHSCOPE_API_BASE") or os.getenv("OPENAI_API_HOST"),
+        base_url=os.getenv("DASHSCOPE_API_BASE") or os.getenv("OPENAI_base_url"),
     )
 
 
 class SimpleAgent:
     """简单的 Tool Calling Agent"""
 
-    def __init__(self, llm, tools):
+    def __init__(self, llm: ChatQwen, tools):
         self.llm = llm.bind_tools(tools)
         self.tools = {t.name: t for t in tools}
 

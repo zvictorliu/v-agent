@@ -13,3 +13,10 @@ wheels/
 !.gitignore
 !.python-version
 .*
+
+# temporary files
+temp/
+tmp/
+
+# lock
+*.lock
