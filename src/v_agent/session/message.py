@@ -1,3 +1,4 @@
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 class Message:
     '''消息类'''
 
@@ -13,3 +14,18 @@ class Message:
 
     info : Info
     parts : list[Part]
+
+def toModelMessages(msgs, model):
+    '''转换成模型输入的消息格式'''
+    model_messages = []
+    for message in msgs:
+        if message.info['role'] == 'user':
+            model_messages.append(HumanMessage(content=message.parts[0].text))
+        elif message.info['role'] == 'assistant':
+            text = [part.text for part in message.parts if part.type == 'text']
+            model_messages.append(AIMessage(content=text[0] if text else ""))
+        elif message.info['role'] == 'system':
+            model_messages.append(SystemMessage(content=message.parts[0].text))
+        else:
+            raise ValueError(f"Unknown message role: {message.info['role']}")
+    return model_messages

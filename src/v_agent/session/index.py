@@ -1,5 +1,6 @@
 from loguru import logger
 import time
+from ..storage.db import global_db
 
 class Session:
     """会话管理，包含上下文管理、消息格式转换等功能"""
@@ -25,6 +26,7 @@ class Session:
         logger.info('Created new session with ID: {id}', id=result.id)
 
         # TODO:保存到数据库
+        global_db.save_session(result)
 
         return result
 

@@ -2,7 +2,8 @@ from .status import SessionStatus, global_session_status
 from .process import SessionProcess
 from .system import SystemPrompt
 from .llm import LLM
-from .message import Message
+from .message import Message, toModelMessages
+from ..storage.db import global_db
 
 class SessionPrompt:
 
@@ -26,14 +27,15 @@ class SessionPrompt:
             # TODO: 还要检测 abort 信号
 
             # TODO: 从数据库中加载历史消息
-            msgs = []
+            db_msgs = global_db.load_messages(sessionID)
 
             # TODO: 将 msgs 转换为 langchain 的消息格式，作为 LLM 的输入
+            model_messages = toModelMessages(db_msgs, input.model)
 
             # TODO: 处理 tasks
 
             stream_input = LLM.StreamInput(
-                messages=msgs,
+                messages=model_messages,
                 sessionID=sessionID
             )
 
@@ -52,6 +54,7 @@ class SessionPrompt:
         # 两种特殊的：file 和 agent
 
         # 存入数据库， loop 从数据库里面读取全部历史消息，不是显示发送这条
+        global_db.save_message(info)
 
     def prompt(self, input: PromptInput):
         '''
@@ -60,7 +63,7 @@ class SessionPrompt:
         '''
 
         # 生成用户消息
-        user_message = self.createUserMessage(input)
+        _ = self.createUserMessage(input)
 
         # 启动
         self.loop(input.sessionID)
