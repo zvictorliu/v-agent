@@ -1,43 +1,46 @@
 from loguru import logger
 import time
 from ..storage.db import global_db
-from ..utils.id import Identifier
+from ..utils import id as Identifier
+from dataclasses import dataclass
 
-class Session:
-    """会话管理，包含上下文管理、消息格式转换等功能"""
-    def __init__(self):
-        pass
+@dataclass    
+class SessionInfo:
+    """Session 信息"""
+    id: str
+    parentID: str
+    directory: str
+    title: str
+    created_at: float
+    updated_at: float
 
-    class Info:
-        """会话信息，包含会话ID、上下文等"""
-        def __init__(self):
-            pass
 
-    def createNext(self, input):
-        """创建一个新的会话具体实现 主要需要考虑数据库"""
-        result = Session.Info()
-        result.id = Identifier.generateID('session_')
-        result.directory = input.directory
-        result.title = input.title if input.title else "New Session" + time.strftime(" %Y-%m-%d %H:%M:%S", time.localtime())
-        result.time = {
-            'created': time.time(),
-            'updated': time.time()
+def createNext(input):
+    """创建一个新的会话具体实现 主要需要考虑数据库"""
+    id = Identifier.generateID("session_")
+    parentID = input.get("parentID", "")
+    directory = input.get("directory", "")
+    title = input.get("title", "") or "New Session" + time.strftime(
+        " %Y-%m-%d %H:%M:%S", time.localtime()
+    )
+    created_at = time.time()
+    updated_at = created_at
+
+    result = SessionInfo(id=id, parentID=parentID, directory=directory, title=title, created_at=created_at, updated_at=updated_at)
+
+    logger.info("Created new session with ID: {id}", id=result.id)
+
+    # TODO:保存到数据库
+    global_db.save_session(result)
+
+    return result
+
+def create(input):
+    """创建一个新的会话"""
+    return createNext(
+        {
+            "parentID": input.get("parentID"),
+            "directory": input.get("directory"),
+            "title": input.get("title"),
         }
-
-        logger.info('Created new session with ID: {id}', id=result.id)
-
-        # TODO:保存到数据库
-        global_db.save_session(result)
-
-        return result
-
-    def create(self, input):
-        """创建一个新的会话"""
-        return self.createNext(
-            {
-                'parentID': input.parentID,
-                'directory': input.directory,
-                'title': input.title
-            }
-        )
-
+    )

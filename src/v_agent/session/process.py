@@ -1,8 +1,7 @@
 from .llm import LLM
 from colorama import Fore
 
-
-class SessionProcess:
+class SessionProcessor:
     def __init__(self, sessionID, options):
         self.sessionID = sessionID
         self.client = LLM(options)
@@ -40,3 +39,4 @@ class SessionProcess:
                     flush=True,
                 )
         print()  # 结束时换行
+        return "stop"

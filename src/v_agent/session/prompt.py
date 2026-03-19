@@ -1,70 +1,89 @@
 from .status import SessionStatus, global_session_status
-from .process import SessionProcess
+from .process import SessionProcessor
 from .system import SystemPrompt
 from .llm import LLM
-from .message import Message, toModelMessages
+from . import message as MessageModule
 from ..storage.db import global_db
-from ..utils.id import Identifier
+from ..utils import id as Identifier
+from dataclasses import dataclass
+import time
 
-class SessionPrompt:
+@dataclass
+class PromptInput:
+    sessionID: str
+    options: dict
+    content: str
 
-    def __init__(self):
-        pass
+def loop(input: PromptInput):
+    """根据会话ID获取提示词并循环处理"""
+    while True:
+        # 设置为 busy 状态
+        global_session_status.set(input.sessionID, 'busy')
 
-    class PromptInput:
-        def __init__(self, sessionID, messageID, model, agent, tools):
-            self.sessionID = sessionID
-            self.messageID = messageID
-            self.model = model
-            self.agent = agent
-            self.tools = tools
+        # TODO: 还要检测 abort 信号
 
-    def loop(self, sessionID):
-        """根据会话ID获取提示词并循环处理"""
-        while True:
-            # 设置为 busy 状态
-            global_session_status.set(sessionID, 'busy')
+        # TODO: 从数据库中加载历史消息
+        db_msgs = global_db.load_messages(input.sessionID)
 
-            # TODO: 还要检测 abort 信号
+        # TODO: 将 msgs 转换为 langchain 的消息格式，作为 LLM 的输入
+        model_messages = MessageModule.toModelMessages(db_msgs)
 
-            # TODO: 从数据库中加载历史消息
-            db_msgs = global_db.load_messages(sessionID)
+        # TODO: 处理 tasks
 
-            # TODO: 将 msgs 转换为 langchain 的消息格式，作为 LLM 的输入
-            model_messages = toModelMessages(db_msgs, input.model)
+        stream_input = LLM.StreamInput(
+            messages=model_messages,
+            sessionID=input.sessionID
+        )
 
-            # TODO: 处理 tasks
+        processor = SessionProcessor(input.sessionID, input.options)
+        result = processor.process(stream_input)
 
-            stream_input = LLM.StreamInput(
-                messages=model_messages,
-                sessionID=sessionID
-            )
+        if result == 'stop':
+            break
 
-            processor = SessionProcess(sessionID)
-            result = processor.process(stream_input)
+def createUserMessage(input: PromptInput) -> MessageModule.Message:
+    """根据输入创建用户消息"""
+    msg_id = Identifier.generateID('msg_')
+    info = {
+        'id': msg_id,
+        'sessionID': input.sessionID,
+        'role': 'user',
+        'time': time.time(),
+        'summary': '',
+        'agent': '',
+        'model': '',
+    }
+    part_id = Identifier.generateID('part_')
+    parts = [
+        {
+            'id': part_id,
+            'sessionID': input.sessionID,
+            'messageID': msg_id,
+            'type': 'text',
+            'text': input.content
+        }
+    ]
 
-            if result == 'stop':
-                break
+    # TODO: 把 input.parts 转换成 Message.Part 的格式
+    msg_info = MessageModule.MessageInfo(**info)
+    msg_parts = [MessageModule.MessagePart(**part) for part in parts]
+    msg = MessageModule.Message(msg_info, msg_parts)
 
-    def createUserMessage(self, input: PromptInput) -> Message:
-        """根据输入创建用户消息"""
-        id = Identifier.generateID('msg_')
-        info = Message.Info(id=id, model=input.model)
+    # 两种特殊的：file 和 agent
 
-        # TODO: 把 input.parts 转换成 Message.Part 的格式
-        # 两种特殊的：file 和 agent
+    # 存入数据库， loop 从数据库里面读取全部历史消息，不是显示发送这条
+    global_db.save_message(msg.info)
+    for part in msg.parts:
+        global_db.save_part(part)
 
-        # 存入数据库， loop 从数据库里面读取全部历史消息，不是显示发送这条
-        global_db.save_message(info)
+def prompt(input: PromptInput):
+    '''
+    从数据库中获取session
+    根据输入生成message
+    '''
 
-    def prompt(self, input: PromptInput):
-        '''
-        从数据库中获取session
-        根据输入生成message
-        '''
+    # 生成用户消息
+    _ = createUserMessage(input)
 
-        # 生成用户消息
-        _ = self.createUserMessage(input)
-
-        # 启动
-        self.loop(input.sessionID)
+    # 启动
+    loop(input)
