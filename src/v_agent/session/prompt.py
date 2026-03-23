@@ -15,7 +15,7 @@ class PromptInput:
     sessionID: str
     options: ProviderOptions
     content: str
-
+    tools: list
 
 def loop(input: PromptInput):
     """根据会话ID获取提示词并循环处理"""
@@ -37,7 +37,7 @@ def loop(input: PromptInput):
             messages=model_messages, sessionID=input.sessionID
         )
 
-        processor = SessionProcessor(input.sessionID, input.options)
+        processor = SessionProcessor(input.sessionID, input.options, input.tools)
         result = processor.process(stream_input)
 
         if result == "stop":
