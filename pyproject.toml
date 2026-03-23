@@ -12,6 +12,7 @@ dependencies = [
     "loguru>=0.7.3",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.3",
+    "textual>=8.1.1",
 ]
 
 [build-system]
@@ -26,5 +27,5 @@ include = ["v_agent"]
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 default = true
 
-[tool.scripts]
-v_agent = "v_agent.cli.cli:main"
+[project.scripts]
+v_agent = "v_agent.ui.tui:main"
