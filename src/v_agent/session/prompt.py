@@ -5,20 +5,23 @@ from .llm import LLM
 from . import message as MessageModule
 from ..storage.db import global_db
 from ..utils import id as Identifier
+from ..provider.provider import ProviderOptions
 from dataclasses import dataclass
 import time
+
 
 @dataclass
 class PromptInput:
     sessionID: str
-    options: dict
+    options: ProviderOptions
     content: str
+
 
 def loop(input: PromptInput):
     """根据会话ID获取提示词并循环处理"""
     while True:
         # 设置为 busy 状态
-        global_session_status.set(input.sessionID, 'busy')
+        global_session_status.set(input.sessionID, "busy")
 
         # TODO: 还要检测 abort 信号
 
@@ -31,36 +34,36 @@ def loop(input: PromptInput):
         # TODO: 处理 tasks
 
         stream_input = LLM.StreamInput(
-            messages=model_messages,
-            sessionID=input.sessionID
+            messages=model_messages, sessionID=input.sessionID
         )
 
         processor = SessionProcessor(input.sessionID, input.options)
         result = processor.process(stream_input)
 
-        if result == 'stop':
+        if result == "stop":
             break
+
 
 def createUserMessage(input: PromptInput) -> MessageModule.Message:
     """根据输入创建用户消息"""
-    msg_id = Identifier.generateID('msg_')
+    msg_id = Identifier.generateID("msg_")
     info = {
-        'id': msg_id,
-        'sessionID': input.sessionID,
-        'role': 'user',
-        'time': time.time(),
-        'summary': '',
-        'agent': '',
-        'model': '',
+        "id": msg_id,
+        "sessionID": input.sessionID,
+        "role": "user",
+        "time": time.time(),
+        "summary": "",
+        "agent": "",
+        "model": "",
     }
-    part_id = Identifier.generateID('part_')
+    part_id = Identifier.generateID("part_")
     parts = [
         {
-            'id': part_id,
-            'sessionID': input.sessionID,
-            'messageID': msg_id,
-            'type': 'text',
-            'text': input.content
+            "id": part_id,
+            "sessionID": input.sessionID,
+            "messageID": msg_id,
+            "type": "text",
+            "text": input.content,
         }
     ]
 
@@ -76,11 +79,14 @@ def createUserMessage(input: PromptInput) -> MessageModule.Message:
     for part in msg.parts:
         global_db.save_part(part)
 
+    return msg
+
+
 def prompt(input: PromptInput):
-    '''
+    """
     从数据库中获取session
     根据输入生成message
-    '''
+    """
 
     # 生成用户消息
     _ = createUserMessage(input)

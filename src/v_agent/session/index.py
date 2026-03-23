@@ -2,17 +2,7 @@ from loguru import logger
 import time
 from ..storage.db import global_db
 from ..utils import id as Identifier
-from dataclasses import dataclass
-
-@dataclass    
-class SessionInfo:
-    """Session 信息"""
-    id: str
-    parentID: str
-    directory: str
-    title: str
-    created_at: float
-    updated_at: float
+from .info import SessionInfo
 
 
 def createNext(input):
@@ -26,7 +16,14 @@ def createNext(input):
     created_at = time.time()
     updated_at = created_at
 
-    result = SessionInfo(id=id, parentID=parentID, directory=directory, title=title, created_at=created_at, updated_at=updated_at)
+    result = SessionInfo(
+        id=id,
+        parentID=parentID,
+        directory=directory,
+        title=title,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
 
     logger.info("Created new session with ID: {id}", id=result.id)
 
@@ -34,6 +31,7 @@ def createNext(input):
     global_db.save_session(result)
 
     return result
+
 
 def create(input):
     """创建一个新的会话"""
@@ -44,3 +42,16 @@ def create(input):
             "title": input.get("title"),
         }
     )
+
+def fork(input):
+    '''fork一个新的会话'''
+
+def get(id):
+    """获取会话信息"""
+    # opencode 这里是返回了一个SessionInfo对象 但这个对象有什么用？
+    pass
+
+
+def list():
+    """列出所有会话"""
+    return global_db.list_sessions()
