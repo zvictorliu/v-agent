@@ -152,5 +152,48 @@ class Database:
             result.append(SessionInfo(**session_info))
         return result
 
+    def get_session(self, id):
+        """根据ID获取会话信息"""
+        self.cursor.execute(
+            "SELECT id, parent_id, directory, title, created_at, updated_at FROM sessions WHERE id = ?",
+            (id,),
+        )
+        session = self.cursor.fetchone()
+        if session:
+            session_info = {
+                "id": session[0],
+                "parentID": session[1],
+                "directory": session[2],
+                "title": session[3],
+                "created_at": session[4],
+                "updated_at": session[5],
+            }
+            return SessionInfo(**session_info)
+        else:
+            return None
+
+    def update_session_time(self, session_id, updated_at):
+        """更新会话更新时间"""
+        self.cursor.execute(
+            "UPDATE sessions SET updated_at = ? WHERE id = ?",
+            (updated_at, session_id),
+        )
+        self.conn.commit()
+
+    def remove_session(self, session_id):
+        """从数据库中删除会话及其关联的所有数据"""
+        self.cursor.execute("DELETE FROM parts WHERE session_id = ?", (session_id,))
+        self.cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+        self.cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+        self.conn.commit()
+
+    def update_session_title(self, session_id, title):
+        """更新会话标题"""
+        self.cursor.execute(
+            "UPDATE sessions SET title = ? WHERE id = ?",
+            (title, session_id),
+        )
+        self.conn.commit()
+
 
 global_db = Database("database/v_agent.db")
