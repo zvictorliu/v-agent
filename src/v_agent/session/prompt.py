@@ -17,6 +17,7 @@ class PromptInput:
     content: str
     tools: list
 
+
 def loop(input: PromptInput):
     """根据会话ID获取提示词并循环处理"""
     while True:
@@ -42,6 +43,40 @@ def loop(input: PromptInput):
 
         if result == "stop":
             break
+
+
+def createSystemMessage(sessionID: str) -> MessageModule.Message:
+    """创建系统消息"""
+    msg_id = Identifier.generateID("msg_")
+    info = {
+        "id": msg_id,
+        "sessionID": sessionID,
+        "role": "system",
+        "time": time.time(),
+        "summary": "",
+        "agent": "",
+        "model": "",
+    }
+    part_id = Identifier.generateID("part_")
+    parts = [
+        {
+            "id": part_id,
+            "sessionID": sessionID,
+            "messageID": msg_id,
+            "type": "text",
+            "text": SystemPrompt.message,
+        }
+    ]
+
+    msg_info = MessageModule.MessageInfo(**info)
+    msg_parts = [MessageModule.MessagePart(**part) for part in parts]
+    msg = MessageModule.Message(msg_info, msg_parts)
+
+    global_db.save_message(msg.info)
+    for part in msg.parts:
+        global_db.save_part(part)
+
+    return msg
 
 
 def createUserMessage(input: PromptInput) -> MessageModule.Message:
@@ -87,6 +122,11 @@ def prompt(input: PromptInput):
     从数据库中获取session
     根据输入生成message
     """
+
+    # 如果没有历史消息，先生成系统消息
+    db_msgs = global_db.load_messages(input.sessionID)
+    if not db_msgs:
+        createSystemMessage(input.sessionID)
 
     # 生成用户消息
     _ = createUserMessage(input)
