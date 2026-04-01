@@ -2,6 +2,7 @@ import argparse
 import sys
 import time
 import json
+import shlex
 from pathlib import Path
 from typing import Optional, List
 from colorama import Fore, Style as ColoramaStyle
@@ -142,6 +143,25 @@ def display_session_history(session_id: str):
         print(f"{Fore.RED}Error loading history: {e}{Fore.RESET}")
 
 
+def list_and_display_sessions() -> List[SessionInfo]:
+    """列出并显示所有会话"""
+    sessions = SessionIndex.list()
+    if not sessions:
+        print("No sessions found.")
+        return []
+    else:
+        print("-" * 80)
+        print(f"{'No.':<4} {'Title':<40} {'Created At':<20}")
+        print("-" * 80)
+        for i, s in enumerate(sessions, 1):
+            time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(s.created_at))
+            title = (s.title[:37] + "...") if len(s.title) > 40 else s.title
+            print(f"{i:<4} {title:<40} {time_str:<20}")
+        print("-" * 80)
+        print("Use '/load <number>' to switch to a session.")
+        return sessions
+
+
 def start_interactive_loop(config: Config):
     """启动交互式循环
 
@@ -176,6 +196,8 @@ def start_interactive_loop(config: Config):
         "/load",
         "/sessions",
         "/tools",
+        "/rename",
+        "/delete",
     ]
     completer = WordCompleter(slash_commands, ignore_case=True)
 
@@ -218,6 +240,8 @@ def start_interactive_loop(config: Config):
                     print("  /new [title]      - Create a new session")
                     print("  /load <id|num>    - Load a session by ID or number")
                     print("  /sessions         - List all sessions")
+                    print("  /rename <id|num> <title> - Rename a session")
+                    print("  /delete <id|num>  - Delete a session")
                     print("  /tools            - List available tools")
                     print("  /settings         - Show current configuration")
                     print("  /clear            - Clear the screen")
@@ -253,24 +277,73 @@ def start_interactive_loop(config: Config):
                         display_session_history(current_session.id)
                     else:
                         print(f"Session not found: {args}")
-                elif command == "/sessions":
-                    last_listed_sessions = SessionIndex.list()
-                    if not last_listed_sessions:
-                        print("No sessions found.")
+                elif command == "/rename":
+                    try:
+                        rename_parts = shlex.split(args)
+                    except ValueError as e:
+                        print(f"Error parsing arguments: {e}")
+                        continue
+
+                    if len(rename_parts) < 2:
+                        print("Usage: /rename <id|num> <new_title>")
+                        continue
+
+                    target_id_or_num = rename_parts[0]
+                    new_title = " ".join(rename_parts[1:])
+
+                    target_session_id = None
+                    if target_id_or_num.isdigit():
+                        idx = int(target_id_or_num) - 1
+                        if 0 <= idx < len(last_listed_sessions):
+                            target_session_id = last_listed_sessions[idx].id
+                        else:
+                            print(
+                                f"Invalid session number: {target_id_or_num}. Please run /sessions first."
+                            )
+                            continue
                     else:
-                        print("-" * 80)
-                        print(f"{'No.':<4} {'Title':<40} {'Created At':<20}")
-                        print("-" * 80)
-                        for i, s in enumerate(last_listed_sessions, 1):
-                            time_str = time.strftime(
-                                "%Y-%m-%d %H:%M:%S", time.localtime(s.created_at)
+                        target_session_id = target_id_or_num
+
+                    try:
+                        SessionIndex.setTitle(target_session_id, new_title)
+                        if current_session and current_session.id == target_session_id:
+                            current_session.title = new_title
+                        print(f"Session renamed to: {new_title}")
+                        # 重新显示会话列表
+                        last_listed_sessions = list_and_display_sessions()
+                    except Exception as e:
+                        print(f"Error renaming session: {e}")
+
+                elif command == "/delete":
+                    if not args:
+                        print("Usage: /delete <id|num>")
+                        continue
+
+                    target_session_id = None
+                    if args.isdigit():
+                        idx = int(args) - 1
+                        if 0 <= idx < len(last_listed_sessions):
+                            target_session_id = last_listed_sessions[idx].id
+                        else:
+                            print(
+                                f"Invalid session number: {args}. Please run /sessions first."
                             )
-                            title = (
-                                (s.title[:37] + "...") if len(s.title) > 40 else s.title
-                            )
-                            print(f"{i:<4} {title:<40} {time_str:<20}")
-                        print("-" * 80)
-                        print("Use '/load <number>' to switch to a session.")
+                            continue
+                    else:
+                        target_session_id = args
+
+                    try:
+                        SessionIndex.remove(target_session_id)
+                        if current_session and current_session.id == target_session_id:
+                            current_session = None
+                        print(f"Session deleted: {target_session_id}")
+                        # 重新显示会话列表
+                        last_listed_sessions = list_and_display_sessions()
+                    except Exception as e:
+                        print(f"Error deleting session: {e}")
+
+                elif command == "/sessions":
+                    last_listed_sessions = list_and_display_sessions()
                 elif command == "/clear":
                     print("\033[H\033[J", end="")
                 elif command == "/settings":
