@@ -59,7 +59,7 @@ def create_parser() -> argparse.ArgumentParser:
         default=None,
     )
     model_group.add_argument(
-        "--api-host",
+        "--base-url",
         type=str,
         help="API 主机地址",
         default=None,
@@ -151,8 +151,8 @@ def start_interactive_loop(config: Config):
     current_session: Optional[SessionInfo] = None
     last_listed_sessions: List[SessionInfo] = []
 
-    # 准备工具注册中心（支持所有可用工具）
-    tool_registry = ToolRegistry(tools=list(available_tools.keys()))
+    # 准备工具注册中心（从配置中读取工具）
+    tool_registry = ToolRegistry(tools=config.tools)
 
     # 准备提供商选项
     model_cfg = config.model
@@ -175,6 +175,7 @@ def start_interactive_loop(config: Config):
         "/new",
         "/load",
         "/sessions",
+        "/tools",
     ]
     completer = WordCompleter(slash_commands, ignore_case=True)
 
@@ -217,6 +218,7 @@ def start_interactive_loop(config: Config):
                     print("  /new [title]      - Create a new session")
                     print("  /load <id|num>    - Load a session by ID or number")
                     print("  /sessions         - List all sessions")
+                    print("  /tools            - List available tools")
                     print("  /settings         - Show current configuration")
                     print("  /clear            - Clear the screen")
                     print("  /exit, /quit      - Exit V-Agent")
@@ -273,6 +275,21 @@ def start_interactive_loop(config: Config):
                     print("\033[H\033[J", end="")
                 elif command == "/settings":
                     print(f"Current Config: {config}")
+                elif command == "/tools":
+                    print("-" * 80)
+                    print(f"{'Tool Name':<25} {'Description':<55}")
+                    print("-" * 80)
+                    tools = tool_registry.get_tools()
+                    if not tools:
+                        print("  No tools available.")
+                    else:
+                        for t in tools:
+                            # 提取描述的第一行并截断
+                            desc = t.description.strip().split("\n")[0]
+                            if len(desc) > 52:
+                                desc = desc[:52] + "..."
+                            print(f"{t.name:<25} {desc:<55}")
+                    print("-" * 80)
                 else:
                     print(f"Unknown command: {command}")
             else:

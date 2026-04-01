@@ -29,6 +29,9 @@ class Config:
 
     config_file: Optional[Path] = None
     database_path: str = "database/v_agent.db"
+    tools: list[str] = field(
+        default_factory=lambda: ["get_weather", "calculate", "execute_command"]
+    )
     _model: ModelConfig = field(default_factory=ModelConfig)
 
     def __post_init__(self):
@@ -56,6 +59,10 @@ class Config:
         # 加载数据库路径
         if "database" in data and "path" in data["database"]:
             self.database_path = data["database"]["path"]
+
+        # 加载工具
+        if "tools" in data:
+            self.tools = data["tools"]
 
     def _load_from_env(self):
         env_mappings = {

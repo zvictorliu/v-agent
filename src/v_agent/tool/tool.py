@@ -66,32 +66,6 @@ def search_web(query: str) -> str:
 
 
 @tool
-def list_directory_contents(directory: Optional[str] = None) -> str:
-    """
-    列出指定目录下的文件和文件夹名称。
-
-    Args:
-        directory (Optional[str], optional): 目录路径。如果未提供，则默认为当前工作目录。
-
-    Returns:
-        str: 目录内容的列表（每行一个），或者包含详细原因的错误消息。
-    """
-    target_path = directory if directory else "."
-
-    try:
-        items = os.listdir(target_path)
-        if not items:
-            return f"目录 '{target_path}' 是空的。"
-        return "\n".join(items)
-    except FileNotFoundError:
-        return f"错误：找不到路径 '{target_path}'。"
-    except PermissionError:
-        return f"错误：没有权限访问目录 '{target_path}'。"
-    except Exception as e:
-        return f"发生未知错误: {str(e)}"
-
-
-@tool
 def read_file(file_path: str) -> str:
     """
     读取指定文件的文本内容。
@@ -193,7 +167,6 @@ available_tools = {
     "search_web": search_web,
     "read_file": read_file,
     "write_file": write_file,
-    "list_directory_contents": list_directory_contents,
     "grep": grep,
     "execute_command": execute_command,
 }
