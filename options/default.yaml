@@ -1,0 +1,15 @@
+provider:
+  provider: "alibaba"
+  model: "qwen3.5-flash"
+  api_key: "your_api_key_here"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+database:
+  path: "database/v_agent.db"
+tools:
+  - "get_weather"
+  - "calculate"
+  - "search_web"
+  - "read_file"
+  - "write_file"
+  - "grep"
+  - "execute_command"
