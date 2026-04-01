@@ -1,7 +1,23 @@
 import argparse
+import sys
+import time
+import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
+from colorama import Fore, Style as ColoramaStyle
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.styles import Style
 from ..config.config import Config, get_config
+from ..session import index as SessionIndex
+from ..session.info import SessionInfo
+from ..session import prompt as SessionPrompt
+from ..storage.db import global_db
+from ..provider.provider import ProviderOptions
+from ..tool.registry import ToolRegistry
+from ..tool.tool import available_tools
+
 
 def create_parser() -> argparse.ArgumentParser:
     """创建命令行参数解析器
@@ -16,7 +32,8 @@ def create_parser() -> argparse.ArgumentParser:
 
     # 配置文件
     parser.add_argument(
-        "-c", "--config",
+        "-c",
+        "--config",
         type=Path,
         default=None,
     )
@@ -75,6 +92,220 @@ def parse_args(args: Optional[list] = None) -> argparse.Namespace:
     parser = create_parser()
     return parser.parse_args(args)
 
+
+def display_session_history(session_id: str):
+    """显示会话历史消息"""
+    try:
+        messages = global_db.load_messages(session_id)
+        if not messages:
+            return
+
+        for msg in messages:
+            role = msg.info.role
+
+            if role == "user":
+                content = "".join([part.text for part in msg.parts])
+                # 模拟用户输入的样式
+                print(
+                    f"\n{Fore.GREEN}{ColoramaStyle.BRIGHT}v-agent>{ColoramaStyle.RESET_ALL} {content}"
+                )
+            elif role == "system":
+                content = "".join([part.text for part in msg.parts])
+                print(f"\n{Fore.CYAN}System:{Fore.RESET} {content}")
+            elif role == "tool":
+                # 工具执行结果暂不展示，除非用户后续要求
+                pass
+            else:
+                # AI 消息展示 logic
+                printed_ai_prefix = False
+                for part in msg.parts:
+                    if part.type == "text":
+                        if part.text.strip():
+                            if not printed_ai_prefix:
+                                print(f"\n{Fore.MAGENTA}AI:{Fore.RESET} {part.text}")
+                                printed_ai_prefix = True
+                            else:
+                                # 如果已经打印过前缀，直接追加文本（或者换行）
+                                print(f"{part.text}")
+                    elif part.type == "tool-calls":
+                        try:
+                            calls = json.loads(part.text)
+                            names = [c.get("name") for c in calls if c.get("name")]
+                            for name in names:
+                                # 用橙色(黄色)标识工具调用，用 ↳ 这个符号，不用 AI:
+                                print(f"\n{Fore.YELLOW}↳ {name}{Fore.RESET}")
+                        except Exception:
+                            pass
+
+        print()  # 最后的换行
+    except Exception as e:
+        print(f"{Fore.RED}Error loading history: {e}{Fore.RESET}")
+
+
+def start_interactive_loop(config: Config):
+    """启动交互式循环
+
+    Args:
+        config: 配置对象
+    """
+    current_session: Optional[SessionInfo] = None
+    last_listed_sessions: List[SessionInfo] = []
+
+    # 准备工具注册中心（支持所有可用工具）
+    tool_registry = ToolRegistry(tools=list(available_tools.keys()))
+
+    # 准备提供商选项
+    model_cfg = config.model
+    provider_options = ProviderOptions(
+        provider=model_cfg.provider,
+        api_key=model_cfg.api_key,
+        model=model_cfg.model,
+        base_url=model_cfg.base_url,
+        temperature=model_cfg.temperature,
+        max_tokens=model_cfg.max_tokens,
+    )
+
+    # 简单的斜杠命令自动补全
+    slash_commands = [
+        "/help",
+        "/exit",
+        "/quit",
+        "/settings",
+        "/clear",
+        "/new",
+        "/load",
+        "/sessions",
+    ]
+    completer = WordCompleter(slash_commands, ignore_case=True)
+
+    # 历史记录文件
+    history_file = Path.home() / ".v_agent_history"
+
+    # 这个是 prompt_toolkit 的，不是 V-Agent 的 Session
+    session = PromptSession(
+        history=FileHistory(str(history_file)),
+        completer=completer,
+    )
+
+    style = Style.from_dict(
+        {
+            "prompt": "ansigreen bold",
+        }
+    )
+
+    print("Welcome to V-Agent! Type /help for assistance or /exit to quit.")
+
+    while True:
+        try:
+            prompt_parts = [("class:prompt", "v-agent> ")]
+
+            text = session.prompt(prompt_parts, style=style)
+
+            if not text.strip():
+                continue
+
+            if text.startswith("/"):
+                parts = text.strip().split(maxsplit=1)
+                command = parts[0].lower()
+                args = parts[1] if len(parts) > 1 else ""
+
+                if command in ["/exit", "/quit"]:
+                    break
+                elif command == "/help":
+                    print("Available commands:")
+                    print("  /help             - Show this help message")
+                    print("  /new [title]      - Create a new session")
+                    print("  /load <id|num>    - Load a session by ID or number")
+                    print("  /sessions         - List all sessions")
+                    print("  /settings         - Show current configuration")
+                    print("  /clear            - Clear the screen")
+                    print("  /exit, /quit      - Exit V-Agent")
+                elif command == "/new":
+                    # 如果未输入标题，传入空字典让 SessionIndex 自动生成
+                    session_input = {"title": args} if args else {}
+                    current_session = SessionIndex.create(session_input)
+                    print(
+                        f"Created and switched to new session: {current_session.title}"
+                    )
+                elif command == "/load":
+                    if not args:
+                        print("Usage: /load <id|num>")
+                        continue
+
+                    target_session = None
+                    if args.isdigit():
+                        idx = int(args) - 1
+                        if 0 <= idx < len(last_listed_sessions):
+                            target_session = last_listed_sessions[idx]
+                        else:
+                            print(
+                                f"Invalid session number: {args}. Please run /sessions first."
+                            )
+                            continue
+                    else:
+                        target_session = SessionIndex.get(args)
+
+                    if target_session:
+                        current_session = target_session
+                        print(f"Loaded session: {current_session.title}")
+                        display_session_history(current_session.id)
+                    else:
+                        print(f"Session not found: {args}")
+                elif command == "/sessions":
+                    last_listed_sessions = SessionIndex.list()
+                    if not last_listed_sessions:
+                        print("No sessions found.")
+                    else:
+                        print("-" * 80)
+                        print(f"{'No.':<4} {'Title':<40} {'Created At':<20}")
+                        print("-" * 80)
+                        for i, s in enumerate(last_listed_sessions, 1):
+                            time_str = time.strftime(
+                                "%Y-%m-%d %H:%M:%S", time.localtime(s.created_at)
+                            )
+                            title = (
+                                (s.title[:37] + "...") if len(s.title) > 40 else s.title
+                            )
+                            print(f"{i:<4} {title:<40} {time_str:<20}")
+                        print("-" * 80)
+                        print("Use '/load <number>' to switch to a session.")
+                elif command == "/clear":
+                    print("\033[H\033[J", end="")
+                elif command == "/settings":
+                    print(f"Current Config: {config}")
+                else:
+                    print(f"Unknown command: {command}")
+            else:
+                if not current_session:
+                    # 如果没有会话，自动创建一个 (不传标题，由 SessionIndex 自动生成)
+                    current_session = SessionIndex.create({})
+
+                # 创建提示词输入
+                prompt_input = SessionPrompt.PromptInput(
+                    sessionID=current_session.id,
+                    options=provider_options,
+                    content=text,
+                    tools=tool_registry.get_tools(),
+                )
+
+                # 调用 Agent 处理输入
+                SessionPrompt.prompt(prompt_input)
+                print()  # 处理完成后换行
+
+        except KeyboardInterrupt:
+            continue
+        except EOFError:
+            break
+
+    print("Goodbye!")
+
+
 def main():
     args = parse_args()
     config: Config = get_config(args.config, **vars(args))
+
+    start_interactive_loop(config)
+
+
+if __name__ == "__main__":
+    main()

@@ -46,10 +46,14 @@ class SessionProcessor:
         msg_info = MessageModule.MessageInfo(**msg_info)
 
         message_saved = False
+        printed_ai_prefix = False
 
         for chunk in response_stream:
             # 打印流式文本（如果有的话）
             if chunk.content:
+                if not printed_ai_prefix:
+                    print(f"\n{Fore.MAGENTA}AI:{Fore.RESET} ", end="", flush=True)
+                    printed_ai_prefix = True
                 print(chunk.content, end="", flush=True)
             # 累加 chunk 以获得完整的 tool_calls
             if full_response is None:
@@ -94,13 +98,11 @@ class SessionProcessor:
             tool_name = tool_call["name"]
             tool_args = tool_call["args"]
             tool_id = tool_call["id"]
-            print(
-                f"\n{Fore.YELLOW}工具调用: {tool_name}\n参数: {tool_args}{Fore.RESET}"
-            )
+
+            print(f"\n{Fore.YELLOW}↳ {tool_name}{Fore.RESET}")
 
             if tool_name in self.tools:
                 result = self.tools[tool_name].invoke(tool_args)
-                print(f"{Fore.GREEN}工具结果: {result}{Fore.RESET}")
 
                 # 创建一个新的消息用于保存工具结果
                 # 因为 langchain 的原因必须单独封装 ToolMessage 才能识别

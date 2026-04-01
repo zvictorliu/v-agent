@@ -28,6 +28,7 @@ class Config:
     """
 
     config_file: Optional[Path] = None
+    database_path: str = "database/v_agent.db"
     _model: ModelConfig = field(default_factory=ModelConfig)
 
     def __post_init__(self):
@@ -37,7 +38,7 @@ class Config:
 
     def _load_from_config_file(self):
         if self.config_file is None:
-            self.config_file = Path("config.yaml")
+            self.config_file = Path("options/default.yaml")
 
         if not self.config_file.exists():
             return
@@ -45,10 +46,16 @@ class Config:
         with open(self.config_file) as f:
             data = yaml.safe_load(f) or {}
 
-        if "model" in data:
-            for key, value in data["model"].items():
+        # 兼容新的 provider 键和旧的 model 键
+        model_data = data.get("provider") or data.get("model")
+        if model_data:
+            for key, value in model_data.items():
                 if hasattr(self._model, key):
                     setattr(self._model, key, value)
+
+        # 加载数据库路径
+        if "database" in data and "path" in data["database"]:
+            self.database_path = data["database"]["path"]
 
     def _load_from_env(self):
         env_mappings = {
