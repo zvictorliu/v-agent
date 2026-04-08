@@ -1,8 +1,18 @@
 provider:
-  provider: "alibaba"
-  model: "qwen3.5-flash"
-  api_key: "your_api_key_here"
-  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  - provider: "alibaba"
+    api_key: ""
+    base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    models:
+      - type: "default"
+        model: "qwen3.5-flash"
+      - type: "coder"
+        model: "qwen2.5-coder-32k"
+  - provider: "openai"
+    api_key: ""
+    base_url: "https://api.openai.com/v1"
+    models:
+      - type: "secondary"
+        model: "gpt-4o-mini"
 database:
   path: "database/v_agent.db"
 tools:

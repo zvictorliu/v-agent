@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 class ModelConfig:
     """模型配置"""
 
+    type: str = "default"
     provider: str = "openai"
     model: str = "gpt-4o-mini"
     api_key: str = ""
@@ -33,6 +34,7 @@ class Config:
         default_factory=lambda: ["get_weather", "calculate", "execute_command"]
     )
     _model: ModelConfig = field(default_factory=ModelConfig)
+    models: dict[str, ModelConfig] = field(default_factory=dict)
 
     def __post_init__(self):
         load_dotenv()
@@ -52,9 +54,39 @@ class Config:
         # 兼容新的 provider 键和旧的 model 键
         model_data = data.get("provider") or data.get("model")
         if model_data:
-            for key, value in model_data.items():
-                if hasattr(self._model, key):
-                    setattr(self._model, key, value)
+            if isinstance(model_data, list):
+                for p_data in model_data:
+                    if "models" in p_data and isinstance(p_data["models"], list):
+                        provider_base = {
+                            k: v for k, v in p_data.items() if k != "models"
+                        }
+                        for m_data in p_data["models"]:
+                            model_cfg = ModelConfig()
+                            # 继承 provider 级别的配置
+                            for key, value in provider_base.items():
+                                if hasattr(model_cfg, key):
+                                    setattr(model_cfg, key, value)
+                            # 覆盖 model 级别的配置
+                            for key, value in m_data.items():
+                                if hasattr(model_cfg, key):
+                                    setattr(model_cfg, key, value)
+                            self.models[model_cfg.type] = model_cfg
+                    else:
+                        model_cfg = ModelConfig()
+                        for key, value in p_data.items():
+                            if hasattr(model_cfg, key):
+                                setattr(model_cfg, key, value)
+                        self.models[model_cfg.type] = model_cfg
+
+                if "default" in self.models:
+                    self._model = self.models["default"]
+                elif self.models:
+                    self._model = list(self.models.values())[0]
+            elif isinstance(model_data, dict):
+                for key, value in model_data.items():
+                    if hasattr(self._model, key):
+                        setattr(self._model, key, value)
+                self.models[self._model.type] = self._model
 
         # 加载数据库路径
         if "database" in data and "path" in data["database"]:
