@@ -8,6 +8,8 @@ from ..utils import id as Identifier
 from ..provider.provider import ProviderOptions
 from dataclasses import dataclass
 import time
+from ..agent import title as TitleAgent
+from loguru import logger
 
 
 @dataclass
@@ -20,9 +22,18 @@ class PromptInput:
 
 def loop(input: PromptInput):
     """根据会话ID获取提示词并循环处理"""
+    step = 0
+    session_info = global_db.get_session(input.sessionID)
     while True:
         # 设置为 busy 状态
         global_session_status.set(input.sessionID, "busy")
+        step += 1
+        if step == 1: # 第一条消息，应该自动起标题
+            TitleAgent.ensureTitle(session_info, input)
+            # 更新数据库
+            global_db.update_session_title(input.sessionID, session_info.title)
+            # TODO: 还要想办法通知前端
+            logger.info(f'Update title to: {session_info.title}')
 
         # TODO: 还要检测 abort 信号
 
