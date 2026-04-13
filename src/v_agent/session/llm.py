@@ -34,11 +34,11 @@ class LLM:
             self.messages = messages  # 转换为 langchain 的消息格式
             self.sessionID = sessionID  # 这些都是后话了
 
-    def invoke(self, input):
+    async def invoke(self, input):
         """非流式输出，适合标题总结"""
-        return self._client.invoke(input.messages)
+        return await self._client.ainvoke(input.messages)
 
-    def stream(self, input):  # 这里需定义自己的输入格式，其中包含 langchain 的消息格式
+    async def stream(self, input):  # 这里需定义自己的输入格式，其中包含 langchain 的消息格式
         """流式处理用户问题"""
-        for chunk in self._client.stream(input.messages):
+        async for chunk in self._client.astream(input.messages):
             yield chunk

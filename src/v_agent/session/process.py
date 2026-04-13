@@ -27,7 +27,7 @@ class SessionProcessor:
             part = MessageModule.MessagePart(**part_info)
             global_db.save_part(part)
 
-    def process(self, input: LLM.StreamInput):
+    async def process(self, input: LLM.StreamInput):
         """处理一次会话"""
         full_response = None
         response_stream = self.client.stream(input)
@@ -48,7 +48,7 @@ class SessionProcessor:
         message_saved = False
         printed_ai_prefix = False
 
-        for chunk in response_stream:
+        async for chunk in response_stream:
             # 打印流式文本（如果有的话）
             if chunk.content:
                 if not printed_ai_prefix:

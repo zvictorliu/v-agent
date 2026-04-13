@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import sys
 import time
 import json
@@ -162,7 +163,7 @@ def list_and_display_sessions() -> List[SessionInfo]:
         return sessions
 
 
-def start_interactive_loop(config: Config):
+async def start_interactive_loop(config: Config):
     """启动交互式循环
 
     Args:
@@ -171,10 +172,8 @@ def start_interactive_loop(config: Config):
     current_session: Optional[SessionInfo] = None
     last_listed_sessions: List[SessionInfo] = []
 
-    # 准备工具注册中心（从配置中读取工具）
     tool_registry = ToolRegistry(tools=config.tools)
 
-    # 准备提供商选项
     model_cfg = config.model
     provider_options = ProviderOptions(
         provider=model_cfg.provider,
@@ -185,7 +184,6 @@ def start_interactive_loop(config: Config):
         max_tokens=model_cfg.max_tokens,
     )
 
-    # 简单的斜杠命令自动补全
     slash_commands = [
         "/help",
         "/exit",
@@ -201,10 +199,8 @@ def start_interactive_loop(config: Config):
     ]
     completer = WordCompleter(slash_commands, ignore_case=True)
 
-    # 历史记录文件
     history_file = Path.home() / ".v_agent_history"
 
-    # 这个是 prompt_toolkit 的，不是 V-Agent 的 Session
     session = PromptSession(
         history=FileHistory(str(history_file)),
         completer=completer,
@@ -222,7 +218,7 @@ def start_interactive_loop(config: Config):
         try:
             prompt_parts = [("class:prompt", "v-agent> ")]
 
-            text = session.prompt(prompt_parts, style=style)
+            text = await session.prompt_async(prompt_parts, style=style)
 
             if not text.strip():
                 continue
@@ -247,7 +243,6 @@ def start_interactive_loop(config: Config):
                     print("  /clear            - Clear the screen")
                     print("  /exit, /quit      - Exit V-Agent")
                 elif command == "/new":
-                    # 如果未输入标题，传入空字典让 SessionIndex 自动生成
                     session_input = {"title": args} if args else {}
                     current_session = SessionIndex.create(session_input)
                     print(
@@ -309,7 +304,6 @@ def start_interactive_loop(config: Config):
                         if current_session and current_session.id == target_session_id:
                             current_session.title = new_title
                         print(f"Session renamed to: {new_title}")
-                        # 重新显示会话列表
                         last_listed_sessions = list_and_display_sessions()
                     except Exception as e:
                         print(f"Error renaming session: {e}")
@@ -337,7 +331,6 @@ def start_interactive_loop(config: Config):
                         if current_session and current_session.id == target_session_id:
                             current_session = None
                         print(f"Session deleted: {target_session_id}")
-                        # 重新显示会话列表
                         last_listed_sessions = list_and_display_sessions()
                     except Exception as e:
                         print(f"Error deleting session: {e}")
@@ -357,7 +350,6 @@ def start_interactive_loop(config: Config):
                         print("  No tools available.")
                     else:
                         for t in tools:
-                            # 提取描述的第一行并截断
                             desc = t.description.strip().split("\n")[0]
                             if len(desc) > 52:
                                 desc = desc[:52] + "..."
@@ -367,10 +359,8 @@ def start_interactive_loop(config: Config):
                     print(f"Unknown command: {command}")
             else:
                 if not current_session:
-                    # 如果没有会话，自动创建一个 (不传标题，由 SessionIndex 自动生成)
                     current_session = SessionIndex.create({})
 
-                # 创建提示词输入
                 prompt_input = SessionPrompt.PromptInput(
                     sessionID=current_session.id,
                     options=provider_options,
@@ -378,9 +368,8 @@ def start_interactive_loop(config: Config):
                     tools=tool_registry.get_tools(),
                 )
 
-                # 调用 Agent 处理输入
-                SessionPrompt.prompt(prompt_input)
-                print()  # 处理完成后换行
+                await SessionPrompt.prompt(prompt_input)
+                print()
 
         except KeyboardInterrupt:
             continue
@@ -394,7 +383,7 @@ def main():
     args = parse_args()
     config: Config = get_config(args.config, **vars(args))
 
-    start_interactive_loop(config)
+    asyncio.run(start_interactive_loop(config))
 
 
 if __name__ == "__main__":
