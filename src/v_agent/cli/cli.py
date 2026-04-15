@@ -196,6 +196,7 @@ async def start_interactive_loop(config: Config):
         "/tools",
         "/rename",
         "/delete",
+        "/skills",
     ]
     completer = WordCompleter(slash_commands, ignore_case=True)
 
@@ -239,6 +240,7 @@ async def start_interactive_loop(config: Config):
                     print("  /rename <id|num> <title> - Rename a session")
                     print("  /delete <id|num>  - Delete a session")
                     print("  /tools            - List available tools")
+                    print("  /skills           - List loaded skills")
                     print("  /settings         - Show current configuration")
                     print("  /clear            - Clear the screen")
                     print("  /exit, /quit      - Exit V-Agent")
@@ -354,6 +356,25 @@ async def start_interactive_loop(config: Config):
                             if len(desc) > 52:
                                 desc = desc[:52] + "..."
                             print(f"{t.name:<25} {desc:<55}")
+                    print("-" * 80)
+                elif command == "/skills":
+                    print("-" * 80)
+                    print(f"{'Skill Name':<25} {'Description':<55}")
+                    print("-" * 80)
+                    try:
+                        from ..tool.skill import get_available_skills
+
+                        skills = get_available_skills()
+                        if not skills:
+                            print("  No skills loaded.")
+                        else:
+                            for name, desc in skills.items():
+                                desc_first_line = desc.strip().split("\n")[0]
+                                if len(desc_first_line) > 52:
+                                    desc_first_line = desc_first_line[:52] + "..."
+                                print(f"{name:<25} {desc_first_line:<55}")
+                    except ImportError:
+                        print("  Skill module not available.")
                     print("-" * 80)
                 else:
                     print(f"Unknown command: {command}")

@@ -1,4 +1,4 @@
-from langchain.tools import tool
+from langchain_core.tools import tool
 import os
 import subprocess
 from typing import Optional
@@ -76,6 +76,7 @@ def read_file(file_path: str) -> str:
     Returns:
         str: 文件的全文内容，或者包含详细原因的错误消息。
     """
+    print(file_path)
     try:
         with open(file_path, "r", encoding="utf-8") as file:
             return file.read()
@@ -99,6 +100,7 @@ def write_file(file_path: str, content: str) -> str:
     Returns:
         str: 写入成功的确认消息，或者包含详细原因的错误消息。
     """
+    print(file_path)
     try:
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(content)
@@ -170,3 +172,11 @@ available_tools = {
     "grep": grep,
     "execute_command": execute_command,
 }
+
+# 引入我们刚才创建的 skill_tool，它会自动扫描技能并注入自身描述
+try:
+    from .skill import skill_tool
+
+    available_tools["skill"] = skill_tool
+except ImportError as e:
+    print(f"Warning: Failed to load skill tool: {e}")
