@@ -23,6 +23,7 @@ async def ensureTitle(session_info, input):
     if not isDefaultTitle(session_info.title):
         return
     try:
-        session_info.title = await client.invoke(llm_input).content
-    except:
-        logger.error('Query title failed.')
+        response = await client.invoke(llm_input)
+        session_info.title = response.content
+    except Exception:
+        logger.exception('Query title failed.')
