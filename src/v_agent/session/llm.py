@@ -7,15 +7,20 @@ from langchain_core.messages import BaseMessage
 class LLM:
     """大模型接入"""
 
-    def __init__(self, options: ProviderOptions, tools=None):
+    def __init__(
+        self, options: ProviderOptions, tools=None, disable_thinking: bool = False
+    ):
         self.options = options
 
         if options.provider == "alibaba":
-            self._client = ChatQwen(
-                model=options.model,
-                api_key=options.api_key,
-                base_url=options.base_url,
-            )
+            qwen_kwargs = {
+                "model": options.model,
+                "api_key": options.api_key,
+                "base_url": options.base_url,
+            }
+            if disable_thinking:
+                qwen_kwargs["enable_thinking"] = False
+            self._client = ChatQwen(**qwen_kwargs)
         elif options.provider == "openai":
             self._client = ChatOpenAI(
                 model=options.model,
