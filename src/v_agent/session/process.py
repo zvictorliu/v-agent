@@ -8,10 +8,11 @@ import time
 
 
 class SessionProcessor:
-    def __init__(self, sessionID, options, tools):
+    def __init__(self, sessionID, options, tools, verbose=False):
         self.sessionID = sessionID
         self.client = LLM(options, tools=tools)
         self.tools = {t.name: t for t in tools}
+        self.verbose = verbose
 
     def _save_current_part(self, part_type, content, message_id=""):
         """保存消息部分到数据库"""
@@ -47,10 +48,27 @@ class SessionProcessor:
 
         message_saved = False
         printed_ai_prefix = False
+        first_valid = False
 
         async for chunk in response_stream:
+            # 打印推理内容（如果有的话）
+            if hasattr(chunk, "additional_kwargs") and chunk.additional_kwargs:
+                reasoning_content = chunk.additional_kwargs.get("reasoning_content")
+                if self.verbose and reasoning_content:
+                    if not printed_ai_prefix:
+                        print(f"\n{Fore.MAGENTA}AI:{Fore.RESET} ", end="", flush=True)
+                        printed_ai_prefix = True
+                    print(
+                        f"{Fore.BLUE}\x1b[3m{reasoning_content}\x1b[0m",
+                        end="",
+                        flush=True,
+                    )
+
             # 打印流式文本（如果有的话）
             if chunk.content:
+                if not first_valid:
+                    first_valid = True
+                    print() # 隔开
                 if not printed_ai_prefix:
                     print(f"\n{Fore.MAGENTA}AI:{Fore.RESET} ", end="", flush=True)
                     printed_ai_prefix = True

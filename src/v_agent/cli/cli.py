@@ -78,6 +78,11 @@ def create_parser() -> argparse.ArgumentParser:
         help="最大生成 token 数",
         default=None,
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="显示推理内容（reasoning_content）",
+    )
 
     return parser
 
@@ -163,7 +168,7 @@ def list_and_display_sessions() -> List[SessionInfo]:
         return sessions
 
 
-async def start_interactive_loop(config: Config):
+async def start_interactive_loop(config: Config, verbose: bool = False):
     """启动交互式循环
 
     Args:
@@ -387,6 +392,7 @@ async def start_interactive_loop(config: Config):
                     options=provider_options,
                     content=text,
                     tools=tool_registry.get_tools(),
+                    verbose=verbose,
                 )
 
                 await SessionPrompt.prompt(prompt_input)
@@ -404,7 +410,7 @@ def main():
     args = parse_args()
     config: Config = get_config(args.config, **vars(args))
 
-    asyncio.run(start_interactive_loop(config))
+    asyncio.run(start_interactive_loop(config, verbose=args.verbose))
 
 
 if __name__ == "__main__":

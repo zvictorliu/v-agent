@@ -19,6 +19,7 @@ class PromptInput:
     options: ProviderOptions
     content: str
     tools: list
+    verbose: bool = False
 
 
 async def loop(input: PromptInput):
@@ -50,7 +51,12 @@ async def loop(input: PromptInput):
             messages=model_messages, sessionID=input.sessionID
         )
 
-        processor = SessionProcessor(input.sessionID, input.options, input.tools)
+        processor = SessionProcessor(
+            input.sessionID,
+            input.options,
+            input.tools,
+            verbose=input.verbose,
+        )
         result = await processor.process(stream_input)
 
         if result == "stop":
